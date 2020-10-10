@@ -24,11 +24,22 @@ module.exports = class Server {
         this.app = express();
         this.httpServer = createServer(this.app);
         this.io = socketIO(this.httpServer);
+    }
+
+    handleRoutes() {
+        this.app.get("/", (req, res) => {
+            res.send(`<h1>Hello World</h1>`);
+        });
+    }
+
+    handleSocketConnection() {
         this.io.on("connection", socket => {
+            console.log("Socket connected.");
+
             const existingSocket = this.activeSockets.find(
                 existingSocket => existingSocket === socket.id
             );
-            
+
             if (!existingSocket) {
                 this.activeSockets.push(socket.id);
 
@@ -62,18 +73,6 @@ module.exports = class Server {
                     answer: data.answer
                 });
             });
-        });
-    }
-
-    handleRoutes() {
-        this.app.get("/", (req, res) => {
-            res.send(`<h1>Hello World</h1>`);
-        });
-    }
-
-    handleSocketConnection() {
-        this.io.on("connection", socket => {
-            console.log("Socket connected.");
         });
     }
 
