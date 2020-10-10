@@ -1,18 +1,22 @@
-import express from "express";
-import socketIO from "socket.io";
-import { createServer } from "http";
+const express = require("express");
+const socketIO = require("socket.io");
+const { createServer } = require("http");
+const path = require("path");
 
-export class Server {
+module.exports = class Server {
     httpServer;
     app;
     io;
 
-    DEFAULT_PORT = 5000;
+    DEFAULT_PORT = 3000;
+    activeSockets = [];
 
     constructor() {
-        this.initialize();
+        this.app = express();
+        this.httpServer = createServer(this.app);
+        this.io = socketIO(this.httpServer);
 
-        this.handleRoutes();
+        this.configureApp();
         this.handleSocketConnection();
     }
 
@@ -20,6 +24,45 @@ export class Server {
         this.app = express();
         this.httpServer = createServer(this.app);
         this.io = socketIO(this.httpServer);
+        this.io.on("connection", socket => {
+            const existingSocket = this.activeSockets.find(
+                existingSocket => existingSocket === socket.id
+            );
+            
+            if (!existingSocket) {
+                this.activeSockets.push(socket.id);
+
+                socket.emit("update-user-list", {
+                    users: this.activeSockets.filter(
+                        existingSocket => existingSocket !== socket.id
+                    )
+                });
+
+                socket.broadcast.emit("update-user-list", {
+                    users: [socket.id]
+                });
+            }
+            socket.on("disconnect", () => {
+                this.activeSockets = this.activeSockets.filter(
+                    existingSocket => existingSocket !== socket.id
+                );
+                socket.broadcast.emit("remove-user", {
+                    socketId: socket.id
+                });
+            });
+            socket.on("call-user", data => {
+                socket.to(data.to).emit("call-made", {
+                    offer: data.offer,
+                    socket: socket.id
+                });
+            });
+            socket.on("make-answer", data => {
+                socket.to(data.to).emit("answer-made", {
+                    socket: socket.id,
+                    answer: data.answer
+                });
+            });
+        });
     }
 
     handleRoutes() {
@@ -39,4 +82,9 @@ export class Server {
             callback(this.DEFAULT_PORT)
         );
     }
+
+    configureApp() {
+        this.app.use(express.static(path.join(__dirname, "../client")));
+    }
+
 }

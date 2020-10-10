@@ -1,0 +1,12 @@
+.container {
+    width: 800px;
+    height: 600px;
+    margin:20px;
+    padding: 10px;
+    background-color: rgb(176, 216, 252);
+}
+
+.logo-container .logo-img{
+    max-width: 100px;
+    max-height: 150px;
+}
